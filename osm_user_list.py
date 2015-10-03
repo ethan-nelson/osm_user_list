@@ -1,5 +1,5 @@
 import xml.etree.cElementTree as ElementTree
-import gzip
+import bz2
 
 
 def parse(filename):
@@ -11,14 +11,22 @@ def parse(filename):
         return conn
     
     def _get_information(name, attribute):
-        username = attribute['user']
-        uid = attribute['uid']
+        if 'user' in attribute:
+            username = attribute['user']
+        else:
+            username = 'anonymous'
+        if 'uid' in attribute:
+            uid = attribute['uid']
+        else:
+            uid = 0
         
         return uid, username
     
     connect = _connect()
-    
-    for event, elem in ElementTree.iterparse(gzip.open(filename, 'rb'), events=('start', 'end')):
+
+    f = bz2.BZ2File(filename,'r')
+
+    for event, elem in ElementTree.iterparse(f, events=('start', 'end')):
         if event == 'start' and elem.tag in ('node', 'way', 'relation'):
             uid, username = _get_information(elem.tag, elem.attrib)
 
