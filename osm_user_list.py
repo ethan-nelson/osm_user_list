@@ -1,12 +1,13 @@
 import xml.etree.cElementTree as ElementTree
 import bz2
+import gc
 
 
 def parse(filename):
     def _connect():
         import psycopg2
         
-        conn = psycopg2.connect("dbname='osmusers' host='localhost' user='osm' password='osm'")
+        conn = psycopg2.connect("dbname='osmusers' host='localhost' user='osm' password='osm' options='-c log_min_messages=PANIC'")
         
         return conn
     
@@ -25,8 +26,12 @@ def parse(filename):
     connect = _connect()
 
     f = bz2.BZ2File(filename,'r')
+    counter = 0
+    data = iter(ElementTree.iterparse(f, events=('start', 'end')))
 
-    for event, elem in ElementTree.iterparse(f, events=('start', 'end')):
+    event, root = data.next()
+
+    for event, elem in data:
         if event == 'start' and elem.tag in ('node', 'way', 'relation'):
             uid, username = _get_information(elem.tag, elem.attrib)
 
@@ -36,4 +41,8 @@ def parse(filename):
                 connect.commit()
             except:
                 connect.rollback()
-        elem.clear()
+            cursor.close()
+            del cursor
+
+        if event == 'end':
+            root.clear()
